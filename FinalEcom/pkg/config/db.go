@@ -7,7 +7,7 @@ import (
 )
 
 func Connect() *gorm.DB {
-	db, err := gorm.Open(postgres.Open("host=5432 dbname=postgres user=postgres password=postgres"), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open("host=localhost dbname=go_store user=postgres password=1234"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

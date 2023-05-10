@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"log"
+	"net/http"
+	"strings"
+
 	"github.com/Nkassymkhan/GoFinalProj.git/pkg/models"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 type handler struct {
@@ -14,6 +17,11 @@ type handler struct {
 
 func New(db *gorm.DB) handler {
 	return handler{db}
+}
+
+
+func (h *handler) Home(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, "Welcome to the Product store")
 }
 
 func (h *handler) GetProducts(c *gin.Context) {
@@ -30,19 +38,50 @@ func (h *handler) GetProducts(c *gin.Context) {
 			h.DB.Order("id asc").Find(&product)
 		}
 		c.IndentedJSON(http.StatusOK, &product)
-		// c.IndentedJSON(http.StatusOK, ord)
 	}
 }
 
-func (h *handler) Home(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, "Welcome to the productstore")
+func (h *handler) GetSortedProductsByCost(c *gin.Context) {
+	var products []models.Product
+	sort := c.Query("sort")
+	parts := strings.Split(sort, "-")
+	if parts[0] == "cost" {
+		parts[0] = "price"
+	}
+	sorting := strings.Join(parts, " ")
+	if sorting == "" {
+		sorting = "cost asc"
+	}
+	if err := h.DB.Order(sorting).Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, products)
 }
+
+func (h *handler) GetSortedProductsByRating(c *gin.Context) {
+	var products []models.Product
+	sort := c.Query("sort")
+	parts := strings.Split(sort, "-")
+	
+	sorting := strings.Join(parts, " ")
+	if sorting == "" {
+		sorting = "rating asc"
+	}
+	if err := h.DB.Order(sorting).Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, products)
+}
+
+
 
 func (h *handler) GetProduct(c *gin.Context) {
 	id := c.Param("id")
 	readProduct := models.Product{}
 
-	dbRresult := h.DB.Where("title = ?", id).First(&readProduct)
+	dbRresult := h.DB.Where("name = ?", id).First(&readProduct)
 	if errors.Is(dbRresult.Error, gorm.ErrRecordNotFound) {
 		if dbRresult = h.DB.Where("id = ?", id).First(&readProduct); dbRresult.Error != nil {
 			c.IndentedJSON(http.StatusOK, "product not found")
@@ -52,10 +91,9 @@ func (h *handler) GetProduct(c *gin.Context) {
 	} else {
 		c.IndentedJSON(http.StatusOK, &readProduct)
 	}
-
 }
 
-func (h *handler) Createproduct(c *gin.Context) {
+func (h *handler) CreateProduct(c *gin.Context) {
 	var newproduct models.Product
 	if err := c.BindJSON(&newproduct); err != nil {
 		c.IndentedJSON(http.StatusOK, "Input is not correct")
@@ -66,36 +104,30 @@ func (h *handler) Createproduct(c *gin.Context) {
 	}
 }
 
-func (h *handler) Updateproduct(c *gin.Context) {
+func (h *handler) GiveRating(c *gin.Context) {
 	id := c.Param("id")
 	readProduct := &models.Product{}
 
-	if dbRresult := h.DB.Where("id = ?", id).First(&readProduct); dbRresult.Error != nil {
-		c.IndentedJSON(http.StatusOK, "product not found")
-	} else {
-
-		var newproduct models.Product
-		if err := c.BindJSON(&newproduct); err != nil {
-			c.IndentedJSON(http.StatusOK, "Input is not correct")
-			panic(err)
-		} else {
-			if newproduct.Cost != 0 {
-				readProduct.Cost = newproduct.Cost
-			}
-			if newproduct.Name != "" {
-				readProduct.Name = newproduct.Name
-			}
-			if newproduct.Description != "" {
-				readProduct.Description = newproduct.Description
-			}
-			h.DB.Save(readProduct)
-			c.IndentedJSON(http.StatusOK, readProduct)
-		}
+	if dbResult := h.DB.Where("id = ?", id).First(&readProduct); dbResult.Error != nil {
+		c.IndentedJSON(http.StatusNotFound, "product not found")
+		return
 	}
 
+	var newProduct models.Product
+	if err := c.BindJSON(&newProduct); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, "Input is not correct")
+		log.Printf("Error binding JSON: %v", err)
+		return
+	}
+
+	if newProduct.Rating != 0 {
+		readProduct.Rating = newProduct.Rating
+	}
+	h.DB.Save(readProduct)
+	c.IndentedJSON(http.StatusOK, readProduct)
 }
 
-func (h *handler) Deleteproduct(c *gin.Context) {
+func (h *handler) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
 	var deleteproduct models.Product
 

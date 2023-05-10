@@ -11,11 +11,13 @@ func main() {
 	h := handlers.New(db)
 	router := gin.Default()
 	router.GET("/", h.Home)
-	router.POST("/books", h.GetProducts)
-	router.GET("/book/:id", h.GetProduct)
-	router.POST("/book", h.Createproduct)
-	router.DELETE("/book/:id", h.Deleteproduct)
-	router.PUT("/book/:id", h.Updateproduct)
+	router.POST("/products", h.GetProducts)
+	router.GET("/product/:id", h.GetProduct)
+	router.POST("/product", h.CreateProduct)
+	router.DELETE("/product/:id", h.DeleteProduct)
+	router.PUT("/product/:id", h.GiveRating)
+	router.GET("/products/sorted", h.GetSortedProductsByCost)
+	router.GET("/products/sortedbyrat", h.GetSortedProductsByRating)
 
 	router.Run(":8080")
 
