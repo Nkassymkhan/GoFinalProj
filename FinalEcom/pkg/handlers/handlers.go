@@ -104,28 +104,24 @@ func (h *handler) CreateProduct(c *gin.Context) {
 }
 
 func (h *handler) GiveRating(c *gin.Context) {
-	// Get the user ID from the authentication or session
 	userID, err := h.getUserIDFromToken(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 		return
 	}
 
-	// Parse the item ID from the request URL
 	itemID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
 		return
 	}
 
-	// Parse the rating value from the request body
 	var rating models.Rating
 	if err := c.ShouldBindJSON(&rating); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rating data"})
 		return
 	}
 
-	// Create or update the rating record in the database
 	rating.UserID = int(userID)
 	rating.ItemID = int(itemID)
 	if err := h.DB.Where(models.Rating{UserID: rating.UserID, ItemID: rating.ItemID}).Assign(rating).FirstOrCreate(&rating).Error; err != nil {
@@ -133,14 +129,12 @@ func (h *handler) GiveRating(c *gin.Context) {
 		return
 	}
 
-	// Calculate the average rating for the item
 	var avgRating float64
 	if err := h.DB.Model(&models.Rating{}).Where("item_id = ?", itemID).Select("AVG(rating)").Row().Scan(&avgRating); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate average rating"})
 		return
 	}
 
-	// Update the ratings column in the items table
 	if err := h.DB.Model(&models.Product{}).Where("id = ?", itemID).Update("rating", avgRating).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ratings"})
 		return
@@ -162,7 +156,7 @@ func (h *handler) DeleteProduct(c *gin.Context) {
 }
 
 func (h *handler) CommentItem(c *gin.Context) {
-	// Get the user ID from the authentication token or session
+
 	userID, err := h.getUserIDFromToken(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
@@ -186,7 +180,6 @@ func (h *handler) CommentItem(c *gin.Context) {
 }
 
 func (h *handler) getUserIDFromToken(c *gin.Context) (int, error) {
-	// Get the JWT token from the Authorization header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		return 0, errors.New("Authorization header missing")
@@ -194,15 +187,12 @@ func (h *handler) getUserIDFromToken(c *gin.Context) (int, error) {
 
 	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 
-	// Parse the JWT token
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
 	if err != nil {
 		return 0, errors.New("Invalid token")
 	}
-
-	// Extract the user ID from the JWT claims
 	claims, ok := token.Claims.(*jwt.StandardClaims)
 	if !ok {
 		return 0, errors.New("Invalid token claims")
@@ -217,21 +207,18 @@ func (h *handler) getUserIDFromToken(c *gin.Context) (int, error) {
 }
 
 func (h *handler) PurchaseItem(c *gin.Context) {
-	// Get the user ID from the authentication token or session
 	userID, err := h.getUserIDFromToken(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 		return
 	}
 
-	// Parse the item ID from the request URL
 	itemID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
 		return
 	}
 
-	// Create the purchase record
 	purchase := models.Purchase{
 		UserID: int(userID),
 		ItemID: int(itemID),
