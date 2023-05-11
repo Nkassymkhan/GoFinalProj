@@ -4,9 +4,12 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Nkassymkhan/GoFinalProj.git/pkg/models"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -153,19 +156,79 @@ func (h *handler) CommentItem(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "Comment created successfully"})
 }
 
-func (h *handler) PurchaseItem(c *gin.Context) {
-	var purchase models.Purchase
-	c.BindJSON(&purchase)
+// func (h *handler) PurchaseItem(c *gin.Context) {
+// 	var purchase models.Purchase
+// 	c.BindJSON(&purchase)
 
-	if purchase.UserID == 0 || purchase.ItemID == 0 {
-		c.JSON(400, gin.H{"error": "Invalid purchase data"})
+// 	if purchase.UserID == 0 || purchase.ItemID == 0 {
+// 		c.JSON(400, gin.H{"error": "Invalid purchase data"})
+// 		return
+// 	}
+
+// 	if err := h.DB.Create(&purchase).Error; err != nil {
+// 		c.JSON(500, gin.H{"error": "Failed to create purchase"})
+// 		return
+// 	}
+
+// 	c.JSON(200, gin.H{"message": "Item purchased successfully"})
+// }
+
+func (h *handler) getUserIDFromToken(c *gin.Context) (int, error) {
+	// Get the JWT token from the Authorization header
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return 0, errors.New("Authorization header missing")
+	}
+
+	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+
+	// Parse the JWT token
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil {
+		return 0, errors.New("Invalid token")
+	}
+
+	// Extract the user ID from the JWT claims
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return 0, errors.New("Invalid token claims")
+	}
+
+	userID, err := strconv.Atoi(claims.Subject)
+	if err != nil {
+		return 0, errors.New("Invalid user ID")
+	}
+
+	return userID, nil
+}
+
+func (h *handler) PurchaseItem(c *gin.Context) {
+	// Get the user ID from the authentication token or session
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 		return
+	}
+
+	// Parse the item ID from the request URL
+	itemID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
+		return
+	}
+
+	// Create the purchase record
+	purchase := models.Purchase{
+		UserID: int(userID),
+		ItemID: int(itemID),
 	}
 
 	if err := h.DB.Create(&purchase).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to create purchase"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create purchase"})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "Item purchased successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Item purchased successfully"})
 }
