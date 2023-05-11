@@ -28,3 +28,10 @@ type Purchase struct {
 	UserID int `json:"user_id"`
 	ItemID int `json:"item_id"`
 }
+
+type Rating struct {
+	gorm.Model
+	UserID int     `json:"user_id"`
+	ItemID int     `json:"item_id"`
+	Rating float32 `json:"rating"`
+}

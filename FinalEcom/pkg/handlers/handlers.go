@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -105,26 +104,49 @@ func (h *handler) CreateProduct(c *gin.Context) {
 }
 
 func (h *handler) GiveRating(c *gin.Context) {
-	id := c.Param("id")
-	readProduct := &models.Product{}
-
-	if dbResult := h.DB.Where("id = ?", id).First(&readProduct); dbResult.Error != nil {
-		c.IndentedJSON(http.StatusNotFound, "product not found")
+	// Get the user ID from the authentication or session
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 		return
 	}
 
-	var newProduct models.Product
-	if err := c.BindJSON(&newProduct); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, "Input is not correct")
-		log.Printf("Error binding JSON: %v", err)
+	// Parse the item ID from the request URL
+	itemID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
 		return
 	}
 
-	if newProduct.Rating != 0 {
-		readProduct.Rating = newProduct.Rating
+	// Parse the rating value from the request body
+	var rating models.Rating
+	if err := c.ShouldBindJSON(&rating); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rating data"})
+		return
 	}
-	h.DB.Save(readProduct)
-	c.IndentedJSON(http.StatusOK, readProduct)
+
+	// Create or update the rating record in the database
+	rating.UserID = int(userID)
+	rating.ItemID = int(itemID)
+	if err := h.DB.Where(models.Rating{UserID: rating.UserID, ItemID: rating.ItemID}).Assign(rating).FirstOrCreate(&rating).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create or update rating"})
+		return
+	}
+
+	// Calculate the average rating for the item
+	var avgRating float64
+	if err := h.DB.Model(&models.Rating{}).Where("item_id = ?", itemID).Select("AVG(value)").Row().Scan(&avgRating); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate average rating"})
+		return
+	}
+
+	// Update the ratings column in the items table
+	if err := h.DB.Model(&models.Product{}).Where("id = ?", itemID).Update("rating", avgRating).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ratings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Ratings updated successfully"})
 }
 
 func (h *handler) DeleteProduct(c *gin.Context) {
@@ -140,38 +162,28 @@ func (h *handler) DeleteProduct(c *gin.Context) {
 }
 
 func (h *handler) CommentItem(c *gin.Context) {
-	var comment models.Comment
-	c.BindJSON(&comment)
-
-	if comment.UserID == 0 || comment.ItemID == 0 || comment.Text == "" {
-		c.JSON(400, gin.H{"error": "Invalid comment data"})
+	// Get the user ID from the authentication token or session
+	userID, err := h.getUserIDFromToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 		return
 	}
+
+	var comment models.Comment
+	if err := c.ShouldBindJSON(&comment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment data"})
+		return
+	}
+
+	comment.UserID = int(userID)
 
 	if err := h.DB.Create(&comment).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to create comment"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "Comment created successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Comment created successfully"})
 }
-
-// func (h *handler) PurchaseItem(c *gin.Context) {
-// 	var purchase models.Purchase
-// 	c.BindJSON(&purchase)
-
-// 	if purchase.UserID == 0 || purchase.ItemID == 0 {
-// 		c.JSON(400, gin.H{"error": "Invalid purchase data"})
-// 		return
-// 	}
-
-// 	if err := h.DB.Create(&purchase).Error; err != nil {
-// 		c.JSON(500, gin.H{"error": "Failed to create purchase"})
-// 		return
-// 	}
-
-// 	c.JSON(200, gin.H{"message": "Item purchased successfully"})
-// }
 
 func (h *handler) getUserIDFromToken(c *gin.Context) (int, error) {
 	// Get the JWT token from the Authorization header
