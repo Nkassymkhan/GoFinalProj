@@ -15,6 +15,7 @@ type Read struct {
 	Ord string `json:"ord"`
 }
 type Comment struct {
+	gorm.Model
 	ID     int    `json:"id"`
 	UserID int    `json:"user_id"`
 	ItemID int    `json:"item_id"`
@@ -22,6 +23,7 @@ type Comment struct {
 }
 
 type Purchase struct {
+	gorm.Model
 	ID     int `json:"id"`
 	UserID int `json:"user_id"`
 	ItemID int `json:"item_id"`

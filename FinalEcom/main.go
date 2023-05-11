@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/Nkassymkhan/GoFinalProj.git/pkg/authorization"
 	"github.com/Nkassymkhan/GoFinalProj.git/pkg/config"
 	"github.com/Nkassymkhan/GoFinalProj.git/pkg/handlers"
-	"github.com/Nkassymkhan/GoFinalProj.git/pkg/authorization"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,7 +21,9 @@ func main() {
 	router.GET("/products/sorted", h.GetSortedProductsByCost)
 	router.GET("/products/sortedbyrat", h.GetSortedProductsByRating)
 	router.POST("/register", a.Register)
-  	// router.POST("/login", a.Login)
+	router.POST("/products/:id/comment", h.CommentItem)
+	router.POST("/products/:id/purchase", h.PurchaseItem)
+	// router.POST("/login", a.Login)
 
 	router.Run(":8080")
 

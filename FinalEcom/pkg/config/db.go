@@ -12,6 +12,9 @@ func Connect() *gorm.DB {
 		panic(err)
 	}
 	db.AutoMigrate(&models.Product{})
+	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.Purchase{})
+	db.AutoMigrate(&models.Comment{})
 
 	return db
 }
