@@ -43,3 +43,23 @@ func (h *handler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }
+
+func (h *handler) Login(c *gin.Context) {
+	var user, foundUser models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.DB.Where("username = ?", user.Username).First(&foundUser).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(user.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged in successfully"})
+}

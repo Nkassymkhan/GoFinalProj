@@ -23,7 +23,7 @@ func main() {
 	router.POST("/register", a.Register)
 	router.POST("/products/:id/comment", h.CommentItem)
 	router.POST("/products/:id/purchase", h.PurchaseItem)
-	// router.POST("/login", a.Login)
+	router.POST("/login", a.Login)
 
 	router.Run(":8080")
 
