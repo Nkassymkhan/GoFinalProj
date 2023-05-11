@@ -19,7 +19,6 @@ func New(db *gorm.DB) handler {
 	return handler{db}
 }
 
-
 func (h *handler) Home(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, "Welcome to the Product store")
 }
@@ -63,7 +62,7 @@ func (h *handler) GetSortedProductsByRating(c *gin.Context) {
 	var products []models.Product
 	sort := c.Query("sort")
 	parts := strings.Split(sort, "-")
-	
+
 	sorting := strings.Join(parts, " ")
 	if sorting == "" {
 		sorting = "rating asc"
@@ -74,8 +73,6 @@ func (h *handler) GetSortedProductsByRating(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, products)
 }
-
-
 
 func (h *handler) GetProduct(c *gin.Context) {
 	id := c.Param("id")
@@ -137,4 +134,38 @@ func (h *handler) DeleteProduct(c *gin.Context) {
 		h.DB.Where("id = ?", id).Delete(&deleteproduct)
 		c.IndentedJSON(http.StatusOK, "product deleted")
 	}
+}
+
+func (h *handler) CommentItem(c *gin.Context) {
+	var comment models.Comment
+	c.BindJSON(&comment)
+
+	if comment.UserID == 0 || comment.ItemID == 0 || comment.Text == "" {
+		c.JSON(400, gin.H{"error": "Invalid comment data"})
+		return
+	}
+
+	if err := h.DB.Create(&comment).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create comment"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Comment created successfully"})
+}
+
+func (h *handler) PurchaseItem(c *gin.Context) {
+	var purchase models.Purchase
+	c.BindJSON(&purchase)
+
+	if purchase.UserID == 0 || purchase.ItemID == 0 {
+		c.JSON(400, gin.H{"error": "Invalid purchase data"})
+		return
+	}
+
+	if err := h.DB.Create(&purchase).Error; err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create purchase"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Item purchased successfully"})
 }
