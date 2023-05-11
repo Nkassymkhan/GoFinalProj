@@ -13,8 +13,6 @@ func main() {
 	a := authorization.New(db)
 	router := gin.Default()
 	router.GET("/", h.Home)
-	router.POST("/login", a.login)
-	router.POST("/products", a.authMiddleware(), a.createProduct)
 	router.POST("/products", h.GetProducts)
 	router.GET("/product/:id", h.GetProduct)
 	router.POST("/product", h.CreateProduct)

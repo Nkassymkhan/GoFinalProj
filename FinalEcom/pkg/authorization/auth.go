@@ -1,97 +1,45 @@
-package main
+package authorization
 
 import (
-"net/http"
-"os"
-"strings"
-"time"
+	"net/http"
 
-"github.com/dgrijalva/jwt-go"
-"github.com/gin-gonic/gin"
-"github.com/jinzhu/gorm"
-_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/Nkassymkhan/GoFinalProj.git/pkg/models"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-type Product struct {
-ID    uint   `json:"id"`
-Name  string `json:"name"`
-Price uint   `json:"price"`
+
+type handler struct {
+	DB *gorm.DB
 }
 
-var db *gorm.DB
-
-func init() {
-var err error
-db, err = gorm.Open("sqlite3", "test.db")
-if err != nil {
-panic("failed to connect database")
+func New(db *gorm.DB) handler {
+	return handler{db}
 }
 
-db.AutoMigrate(&Product{})
+func (h *handler) Home(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, "Welcome to the Product store")
 }
 
-func login(c *gin.Context) {
-	var user struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+func (h *handler) Register(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	if err := c.BindJSON(&user); err != nil {
-	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-	return
-	}
-
-	if user.Username == "admin" && user.Password == "password" {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-	"username": user.Username,
-	"exp":      time.Now().Add(time.Hour * 1).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-	return
-}
-
-c.JSON(http.StatusOK, gin.H{"token": tokenString})
-} else {
-c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-}
-}
-
-func authMiddleware() gin.HandlerFunc {
-return func(c *gin.Context) {
-authHeader := c.GetHeader("Authorization")
-if authHeader == "" {
-c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
-c.Abort()
-return
-}
-
-tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-	return []byte(os.Getenv("SECRET_KEY")), nil
-	})
-
-	if err != nil || !token.Valid {
-	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-	c.Abort()
-	return
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
+		return
 	}
 
-	c.Next()
-	}
-}
-
-func createProduct(c *gin.Context) {
-	var newProduct Product
-	if err := c.BindJSON(&newProduct); err != nil {
-	c.JSON(http.StatusBadRequest, gin.H{"error": "Input is not correct"})
-	return
+	user.Password = string(hashedPassword)
+	if err := h.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	db.Create(&newProduct)
-	c.JSON(http.StatusOK, newProduct)
+	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }
-
-
