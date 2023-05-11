@@ -19,7 +19,7 @@ func main() {
 	router.DELETE("/product/:id", h.DeleteProduct)
 	router.POST("/product/:id/rating", h.GiveRating)
 	router.GET("/products/sorted", h.GetSortedProductsByCost)
-	router.GET("/products/sortedbyrat", h.GetSortedProductsByRating)
+	router.GET("/products/sortedRatings", h.GetSortedProductsByRating)
 	router.POST("/register", a.Register)
 	router.POST("/products/:id/comment", h.CommentItem)
 	router.POST("/products/:id/purchase", h.PurchaseItem)

@@ -135,7 +135,7 @@ func (h *handler) GiveRating(c *gin.Context) {
 
 	// Calculate the average rating for the item
 	var avgRating float64
-	if err := h.DB.Model(&models.Rating{}).Where("item_id = ?", itemID).Select("AVG(value)").Row().Scan(&avgRating); err != nil {
+	if err := h.DB.Model(&models.Rating{}).Where("item_id = ?", itemID).Select("AVG(rating)").Row().Scan(&avgRating); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate average rating"})
 		return
 	}
