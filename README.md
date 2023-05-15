@@ -1,14 +1,13 @@
 # GoFinalProj
-Ecommerce
+#Ecommerce
 Dropshipping, you can sell whatever you want
 
-To run the app:
+#To run the app:
 
 go run main.go
-If you have MongoDB installed you can run just application
 
-go run main.go
-Functionality
+
+#Functionality
 JWT authentication
 Http-endpoints with gin-gonic/gin
 Detailed Structs
